@@ -14,7 +14,6 @@ import { trustScoreProvider } from "./providers/trustScoreProvider.ts";
 import { trustEvaluator } from "./evaluators/trust.ts";
 import { TokenProvider } from "./providers/token.ts";
 import liquidStake from "./actions/liquidStake.ts";
-import { stakeProtocolProvider } from "./providers/stakeProtocol.ts";
 
 export { TokenProvider, WalletProvider };
 
@@ -22,15 +21,15 @@ export const solanaPlugin: Plugin = {
     name: "solana",
     description: "Solana Plugin for Eliza",
     actions: [
+        liquidStake,
         executeSwap,
         pumpfun,
         transferToken,
         executeSwapForDAO,
         take_order,
-        liquidStake,
     ],
     evaluators: [trustEvaluator],
-    providers: [walletProvider, trustScoreProvider, stakeProtocolProvider],
+    providers: [walletProvider, trustScoreProvider],
 };
 
 export default solanaPlugin;

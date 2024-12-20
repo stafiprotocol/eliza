@@ -40,7 +40,6 @@ export class StakeProtocolProvider {
         let lastError: any;
         for (let i = 0; i < PROVIDER_CONFIG.MAX_RETRIES; i++) {
             try {
-                console.log("Fetching data from:", url);
                 const response = await fetch(url, options);
                 if (!response.ok) {
                     console.error("HTTP error:", response);
@@ -85,7 +84,7 @@ export class StakeProtocolProvider {
                         "https://api.marinade.finance/tlv"
                     );
                     tvl = tvlData.total_sol;
-                    apy = apyData.apy;
+                    apy = apyData.apy * 100;
                 } else {
                     const poolAddr = new PublicKey(pool.address);
                     const poolInfo = await stakePoolInfo(
@@ -93,9 +92,56 @@ export class StakeProtocolProvider {
                         poolAddr
                     );
                     tvl = MarinadeUtils.lamportsToSol(poolInfo.totalLamports);
-                    await sleep(1000);
+                    switch (pool.protocolName.toLowerCase()) {
+                        case "jito": {
+                            const apyData = await this.fetchWithRetry(
+                                runtime,
+                                "https://www.jito.network/api/getJitoPoolStatsRecentOnly"
+                            );
+                            apy = apyData.latestApy;
+                            break;
+                        }
+                        case "blaze": {
+                            const apyData = await this.fetchWithRetry(
+                                runtime,
+                                "https://stake.solblaze.org/api/v1/apy"
+                            );
+                            apy = apyData.apy;
+                            break;
+                        }
+                        case "marginfi": {
+                            const apyData = await this.fetchWithRetry(
+                                runtime,
+                                "https://app.marginfi.com/api/lst"
+                            );
+                            apy = apyData.data.apy;
+                            break;
+                        }
+                        case "jpool": {
+                            const baseData = await this.fetchWithRetry(
+                                runtime,
+                                "https://stake.solblaze.org/api/v1/apy"
+                            );
+                            const jpoolData = await this.fetchWithRetry(
+                                runtime,
+                                "https://api2.jpool.one/direct-stake/strategy/stats?strategy=20&build=0.2.55"
+                            );
+                            apy = baseData.base + jpoolData.apy;
+                            break;
+                        }
+                        default: {
+                            console.error(
+                                `Unsupported protocol: ${pool.protocolName}`
+                            );
+                            break;
+                        }
+                    }
+                    await sleep(1500);
                 }
                 // Add mock data for demonstration
+                console.log(
+                    `Fetched data for ${pool.protocolName}: APY: ${apy}, TVL: ${tvl}`
+                );
                 pools[key] = {
                     apy: apy, // Replace with actual API data
                     tvl: tvl, // Replace with actual API data
@@ -118,20 +164,6 @@ export class StakeProtocolProvider {
         return data;
     }
 
-    async getFormattedStakeData(runtime: IAgentRuntime): Promise<string> {
-        const data = await this.fetchPoolData(runtime);
-
-        let output = "Available Liquid Staking Protocols:\n\n";
-
-        for (const [_key, pool] of Object.entries(data.pools)) {
-            output += `${pool.protocolName}:\n`;
-            output += `• APY: ${pool.apy.toFixed(2)}%\n`;
-            output += `• TVL: $${pool.tvl.toLocaleString()}\n\n`;
-        }
-
-        return output;
-    }
-
     async getStakePoolInfo(runtime: IAgentRuntime): Promise<StakeProtocolData> {
         return await this.fetchPoolData(runtime);
     }
@@ -142,14 +174,13 @@ const stakeProtocolProvider: Provider = {
         runtime: IAgentRuntime,
         _message: Memory,
         _state?: State
-    ): Promise<string | null> {
+    ): Promise<StakeProtocolData | string | null> {
         try {
-            // todo: endpoint config to .env
             const connection = new Connection(
                 "https://api.mainnet-beta.solana.com"
             );
             const provider = new StakeProtocolProvider(connection);
-            return await provider.getFormattedStakeData(runtime);
+            return await provider.getStakePoolInfo(runtime);
         } catch (error) {
             console.error("Error in stake protocol provider:", error);
             return "Sorry, I couldn't fetch the stake protocol data at the moment.";
