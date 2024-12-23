@@ -203,6 +203,9 @@ export default {
 
             const responseMsg = {
                 text: `Stake ${amountSol} SOL in ${pool.protocolName} completed successfully! Transaction: ${base58Tx}`,
+                content: {
+                    transaction: base58Tx,
+                },
             };
 
             callback?.(responseMsg);
@@ -224,7 +227,7 @@ export default {
     examples: createStakeExamples(config),
 };
 
-async function depositSolToMarinade(
+export async function depositSolToMarinade(
     connection: Connection,
     from: PublicKey,
     amountSol: number
@@ -257,7 +260,7 @@ async function depositSolToMarinade(
     };
 }
 
-async function depositSolToPool(
+export async function depositSolToPool(
     connection: Connection,
     stakePoolAddress: PublicKey,
     from: PublicKey,
@@ -331,7 +334,7 @@ export function createStakeExamples(config: StakeConfig): ActionExample[][] {
     return examples;
 }
 
-export const createStakeTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
+const createStakeTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
 
 Example response:
 \\\`json
