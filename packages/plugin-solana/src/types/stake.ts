@@ -35,9 +35,6 @@ export type StakePoolsType = {
 export interface StakeConfig {
     name: string;
     similes: string[];
-    pools: {
-        [key: string]: StakePool;
-    };
 }
 
 export interface StakePoolInfo {
@@ -46,6 +43,7 @@ export interface StakePoolInfo {
     miningApy: number;
     airdropExpectation: string;
     protocolName: string;
+    extra?: Record<string, unknown>;
 }
 
 export interface StakeProtocolData {

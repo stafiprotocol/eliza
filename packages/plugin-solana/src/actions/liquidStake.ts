@@ -41,7 +41,7 @@ const connection = new Connection("https://api.mainnet-beta.solana.com");
 const provider = new StakeProtocolProvider(connection);
 
 // Define available stake pools with their addresses and protocol names
-export const STAKE_POOLS: StakePoolsType = {
+let poolList: StakePoolsType = {
     jito: {
         address: "Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb",
         protocolName: "Jito",
@@ -80,7 +80,6 @@ const config: StakeConfig = {
         "STAKE_JPOOL_SOL",
         "STAKE_MARINADE_SOL",
     ],
-    pools: STAKE_POOLS,
 };
 
 // Type guard to validate stake parameters
@@ -113,7 +112,7 @@ async function selectAndValidatePool(
     if (finalPoolName === "" || finalPoolName === null) {
         elizaLogger.log("Selecting best pool...");
 
-        state.poolData = await provider.getStakePoolInfo();
+        state.poolData = await provider.getStakePoolInfo(runtime);
         const selectionPoolContext = composeContext({
             state,
             template: selectionPoolTemplate,
@@ -148,7 +147,7 @@ async function selectAndValidatePool(
     }
 
     // Validate pool exists in config
-    const pool = config.pools[finalPoolName.toLowerCase()];
+    const pool = poolList[finalPoolName.toLowerCase()];
 
     if (!pool) {
         elizaLogger.error(`Invalid pool name: ${finalPoolName}`);
@@ -183,7 +182,18 @@ export default {
         _options: { [key: string]: unknown },
         callback?: HandlerCallback
     ): Promise<boolean> => {
-        elizaLogger.log("Starting STAKE_SOL handler...");
+        elizaLogger.log(`Starting ${config.name} handler...`);
+
+        const newPoolList = await provider.getStakePoolList(runtime);
+
+        if (Object.keys(newPoolList).length !== 0) {
+            poolList = newPoolList;
+        }
+
+        // Extract all the pool names and put them in a string array, then use them in the subsequent templates.
+        const poolNames = Object.keys(poolList).map(
+            (key) => poolList[key].protocolName
+        );
 
         // Initialize or update state
         if (!state) {
@@ -191,6 +201,7 @@ export default {
         } else {
             state = await runtime.updateRecentMessageState(state);
         }
+        state.poolNames = poolNames;
 
         // Generate stake parameters from user input
         const stakeContext = composeContext({
@@ -438,7 +449,7 @@ Example response:
 Given the recent messages, extract or come up with (if not explicitly stated) the following information about the requested SOL staking:
 - User Address for stake
 - Amount of SOL to stake
-- Pool name (either "jito" or "blaze" or "jpool" or "marinade" or "marginfi"). It may also be empty
+- Pool name in {{poolNames}}. It may also be empty
 
 Respond with a JSON markdown block containing only the extracted values.`;
 
@@ -459,9 +470,10 @@ Given the pool data:
 Analyze the following factors to select the most suitable SOL staking protocol:
 1. APY (Annual Percentage Yield) - Higher is better.
 2. TVL (Total Value Locked) - Higher indicates more stability and liquidity.
-3. Protocol reliability and features.
+3. If there is other data such as miningApy or airdropExpectation, analysis should also be conducted in combination with this data.
+4. Protocol reliability and features.
 
-Select the best pool from these options: "jito", "blaze", "jpool", "marinade", or "marginfi".
+Select the best pool from these options: {{poolNames}}.
 
 State the reason for the selection.
 
