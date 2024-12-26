@@ -38,10 +38,10 @@ import { StakeProtocolProvider } from "../providers/stakeProtocol.ts";
 const connection = new Connection("https://api.mainnet-beta.solana.com");
 
 // Initialize stake protocol provider with connection
-const provider = new StakeProtocolProvider(connection);
+const provider = new StakeProtocolProvider();
 
 // Define available stake pools with their addresses and protocol names
-let poolList: StakePoolsType = {
+const DEFAULT_POOL_LIST: StakePoolsType = {
     jito: {
         address: "Jito4APyf642JPZPx3hGc6WWJ8zPKtRbRs4P815Awbb",
         protocolName: "Jito",
@@ -104,6 +104,7 @@ async function selectAndValidatePool(
     runtime: IAgentRuntime,
     state: State,
     poolName: string | null,
+    poolList: StakePoolsType,
     callback?: HandlerCallback
 ): Promise<{ pool: StakePool | null; error?: string }> {
     let finalPoolName = poolName;
@@ -184,10 +185,13 @@ export default {
     ): Promise<boolean> => {
         elizaLogger.log(`Starting ${config.name} handler...`);
 
+        let poolList;
         const newPoolList = await provider.getStakePoolList(runtime);
 
         if (Object.keys(newPoolList).length !== 0) {
             poolList = newPoolList;
+        } else {
+            poolList = DEFAULT_POOL_LIST;
         }
 
         // Extract all the pool names and put them in a string array, then use them in the subsequent templates.
@@ -242,6 +246,7 @@ export default {
             runtime,
             state,
             content.poolName,
+            poolList,
             callback
         );
         if (!poolResult.pool) {

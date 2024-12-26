@@ -1,6 +1,4 @@
 import { elizaLogger, IAgentRuntime, Provider } from "@elizaos/core";
-import { Connection } from "@solana/web3.js";
-import NodeCache from "node-cache";
 import { StakePoolsType, StakeProtocolData } from "../types/stake";
 
 // Provider configuration for retry mechanism and caching
@@ -15,12 +13,6 @@ const PROVIDER_CONFIG = {
  * Implements caching and retry mechanisms for reliable data fetching
  */
 export class StakeProtocolProvider {
-    private cache: NodeCache;
-
-    constructor(private connection: Connection) {
-        this.cache = new NodeCache({ stdTTL: PROVIDER_CONFIG.CACHE_TTL });
-    }
-
     /**
      * Fetches data from a URL with retry mechanism
      * @param url - The URL to fetch data from
@@ -60,6 +52,9 @@ export class StakeProtocolProvider {
         const data = (await this.fetchWithRetry(
             `${requestBaseUrl}/api/stake-pool-list`
         )) as StakePoolsType;
+
+        elizaLogger.log("Pool List:", JSON.stringify(data, null, 2));
+
         return data;
     }
 
@@ -71,13 +66,6 @@ export class StakeProtocolProvider {
     private async fetchPoolData(
         runtime: IAgentRuntime
     ): Promise<StakeProtocolData> {
-        const cacheKey = "stake_pool_data";
-        const cachedData = this.cache.get<StakeProtocolData>(cacheKey);
-
-        if (cachedData) {
-            return cachedData;
-        }
-
         const requestBaseUrl =
             runtime.getSetting("STAKE_POOL_REQUEST_BASE_URL") ??
             "http://127.0.0.1:6666";
@@ -86,7 +74,8 @@ export class StakeProtocolProvider {
             `${requestBaseUrl}/api/stake-pool-info`
         )) as StakeProtocolData;
 
-        this.cache.set(cacheKey, data);
+        elizaLogger.log("Stake Pool Info:", JSON.stringify(data, null, 2));
+
         return data;
     }
 
@@ -111,10 +100,7 @@ const stakeProtocolProvider: Provider = {
     async get(
         runtime: IAgentRuntime
     ): Promise<StakeProtocolData | string | null> {
-        const connection = new Connection(
-            "https://api.mainnet-beta.solana.com"
-        );
-        const provider = new StakeProtocolProvider(connection);
+        const provider = new StakeProtocolProvider();
         try {
             return await provider.getStakePoolInfo(runtime);
         } catch (error) {
