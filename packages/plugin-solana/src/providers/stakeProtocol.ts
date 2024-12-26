@@ -48,7 +48,7 @@ export class StakeProtocolProvider {
     ): Promise<StakePoolsType> {
         const requestBaseUrl =
             runtime.getSetting("STAKE_POOL_REQUEST_BASE_URL") ??
-            "http://127.0.0.1:6666";
+            "https://eliza-provider-api.stafi.io";
         const data = (await this.fetchWithRetry(
             `${requestBaseUrl}/api/stake-pool-list`
         )) as StakePoolsType;
@@ -68,7 +68,7 @@ export class StakeProtocolProvider {
     ): Promise<StakeProtocolData> {
         const requestBaseUrl =
             runtime.getSetting("STAKE_POOL_REQUEST_BASE_URL") ??
-            "http://127.0.0.1:6666";
+            "https://eliza-provider-api.stafi.io";
 
         const data = (await this.fetchWithRetry(
             `${requestBaseUrl}/api/stake-pool-info`
