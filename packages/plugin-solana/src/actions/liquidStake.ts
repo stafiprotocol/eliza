@@ -441,13 +441,13 @@ export function createStakeExamples(config: StakeConfig): ActionExample[][] {
 const createStakeTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
 
 Example response:
-\\\`json
+\`\`\`json
 {
     "userAddress": "HqvTPqS2FaB2fQ7mxqZHQHz6H28o1u2Z9fRH5No8JN2W",
     "amountSol": "1.5",
     "poolName": ""
 }
-\\\`
+\`\`\`
 
 {{recentMessages}}
 
@@ -462,12 +462,12 @@ Respond with a JSON markdown block containing only the extracted values.`;
 const selectionPoolTemplate = `Respond with a JSON markdown block containing only the extracted values. Use null for any values that cannot be determined.
 
 Example response:
-\\\`json
+\`\`\`
 {
     "selectedPool": "jpool",
     "reason": ""
 }
-\\\`
+\`\`\`
 
 Given the pool data:
 {{poolData}}
