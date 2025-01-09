@@ -15,6 +15,7 @@ import { trustScoreProvider } from "./providers/trustScoreProvider.ts";
 import { trustEvaluator } from "./evaluators/trust.ts";
 import { TokenProvider } from "./providers/token.ts";
 import { WalletProvider } from "./providers/wallet.ts";
+import restake from "./actions/restake.ts";
 
 export { TokenProvider, WalletProvider };
 
@@ -28,6 +29,7 @@ export const solanaPlugin: Plugin = {
         transferToken,
         executeSwapForDAO,
         take_order,
+        restake
     ],
     evaluators: [trustEvaluator],
     providers: [walletProvider, trustScoreProvider],
