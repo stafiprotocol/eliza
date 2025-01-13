@@ -1,6 +1,6 @@
 import { elizaLogger, settings } from "@elizaos/core";
 import { web3 } from "@coral-xyz/anchor";
-import { Connection, VersionedTransaction } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import {
     ActionExample,
     Content,
@@ -12,10 +12,11 @@ import {
     type Action,
 } from "@elizaos/core";
 import { composeContext } from "@elizaos/core";
-import { getWalletKey } from "../keypairUtils";
 import { generateObjectDeprecated } from "@elizaos/core";
+import bs58 from "bs58";
 
 export interface RestakeContent extends Content {
+    userAddress: string;
     amount: string | number;
 }
 
@@ -25,7 +26,9 @@ function isRestakeContent(
 ): content is RestakeContent {
     console.log("Content for restake", content);
     return (
-        typeof content.amount === "string" || typeof content.amount === "number"
+        typeof content.userAddress === "string" &&
+        (typeof content.amount === "string" ||
+            typeof content.amount === "number")
     );
 }
 
@@ -67,13 +70,15 @@ const restakeTemplate = `Respond with a JSON markdown block containing only the 
 Example response:
 \`\`\`json
 {
-    "amount": "1000"
+    "userAddress": "EugPwuZ8oUMWsYHeBGERWvELfLGFmA1taDtmY8uMeX6r",
+    "amount": "2.5"
 }
 \`\`\`
 
 {{recentMessages}}
 
 Given the recent messages, extract the following information about the requested restake:
+- User address
 - Amount to restake
 
 Respond with a JSON markdown block containing only the extracted values.`;
@@ -128,55 +133,33 @@ export default {
         }
 
         try {
-            const { keypair: senderKeypair } = await getWalletKey(
-                runtime,
-                true
-            );
-
-            const connection = new Connection(settings.RPC_URL!);
 
             const decimals = 9;
-
             // Adjust amount with decimals
             const adjustedAmount = BigInt(
                 Number(content.amount) * Math.pow(10, decimals)
             );
-            const balance = await connection.getBalance(
-                senderKeypair.publicKey
-            );
-            if (BigInt(balance) < adjustedAmount) {
-                throw Error(`Insufficient balance`);
-            }
-            console.log(
-                `Restaking: ${content.amount} SOL (${adjustedAmount} base units)`
-            );
+            const userPublicKey = new PublicKey(content.userAddress);
 
             // Use the getServerSignedTx function to construct the restaking transaction
             const data = await getServerSignedTx(
-                senderKeypair.publicKey,
+                userPublicKey,
                 content.amount.toString()
             );
             const txDataBuffer = Buffer.from(data["transaction"], "base64");
-            // Sign the transaction and send it
-            let transaction = VersionedTransaction.deserialize(
-                Uint8Array.from(txDataBuffer)
-            );
+            const base58Tx = bs58.encode(Uint8Array.from(txDataBuffer));
 
-            transaction.sign([senderKeypair]);
-
-            // Send transaction
-            const signature = await connection.sendTransaction(transaction);
-
-            console.log("Restake successful:", signature);
+            const amountSol = parseFloat(content.amount as string);
 
             if (callback) {
                 callback({
-                    text: `Successfully restake ${content.amount} SOL to solayer`,
-                    content: {
-                        success: true,
-                        signature,
-                        amount: content.amount,
-                    },
+                    text: JSON.stringify({
+                        action: "RESTAKE",
+                        amountSol: amountSol,
+                        userAddress: content.userAddress,
+                        transaction: base58Tx,
+                     }),
+
                 });
             }
 
@@ -198,20 +181,15 @@ export default {
             {
                 user: "{{user1}}",
                 content: {
-                    text: "Restake 1 SOL to solayer",
-                },
-            },
-            {
-                user: "{{user2}}",
-                content: {
-                    text: "I'll restake 1 SOL now...",
+                    text: "Restake 1 SOL to solayer, my wallet address is: EugPwuZ8oUMWsYHeBGERWvELfLGFmA1taDtmY8uMeX6r",
                     action: "RESTAKE",
                 },
             },
             {
                 user: "{{user2}}",
                 content: {
-                    text: "Successfully restake 1 SOL to solayer",
+                    text: "Successfully generate restake transaction, the amount is 1 SOL, the transaction is 5KtPn3DXXzHkb7VAVHZGwXJQww39ASnrf7YkyJoF2qAGEpBEEGvRHHLnnTG8ZVwKqNHMqScWVGnsQAgfH5pbxEb",
+                    action: "RESTAKE",
                 },
             },
         ],
